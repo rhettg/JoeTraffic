@@ -44,7 +44,8 @@ class HTTPStatusResponseJob(job.Job):
         self.key = None        # The key for our director request
 
         self._status_reqs = {} # A hash table of our responses from agents
-                               #   from Config to AgentElement
+                               #   from AgentInfo (string representation) 
+                               #   to AgentElement
 
     def getClientConnection(self):
         return self.client
@@ -89,10 +90,10 @@ class HTTPStatusResponseJob(job.Job):
         # STEP 4
         if isinstance(evt, simple.ConnectCompleteEvent):
             info = evt.getSource().getConnection().getAgentInfo()
-            if self._status_reqs.has_key(info):
+            if self._status_reqs.has_key(`info`):
                 # this is one of our agent connections, send the status request
                 log.debug("Connection complete, sending StatusRequest")
-                element = self._status_reqs[info]
+                element = self._status_reqs[`info`]
                 element.connection = evt.getSource().getConnection()
 
                 msg = simple.StatusRequest()
@@ -114,8 +115,9 @@ class HTTPStatusResponseJob(job.Job):
                       "Received response from director, connecting to agents")
                 # We have received our list of agents, now we have to get
                 # a more detailed status from each one
-                agnts = evt.getMessage().getAgents()
-                for info in agnts:
+                agnts = evt.getMessage().getAgentInfoList()
+
+                for info in agnts: # + [evt.getSource().getAgentInfo()]:
                     if info == evt.getSource().getAgentInfo():
                         # Don't request status from Director again
                         continue
@@ -123,19 +125,23 @@ class HTTPStatusResponseJob(job.Job):
                     # Create elements in status hash, send connect requests
                     # Step 3
                     element = AgentElement(info)
-                    self._status_reqs[info] = element
+                    self._status_reqs[`info`] = element
                     
+                    # Note this assumes there is no connection to the agent
+                    # already. 
+                    # TODO: Use existing connection if it exists
                     connect_job = simple.ConnectJob(self.getAgent(), info, 3)
 
                     self.getAgent().addListener(connect_job)
-                    connect_job.run()
+                    self.getAgent().addEvent(job.RunJobEvent(self, connect_job))
+
 
             # Step 6: Response from an Agent
             elif isinstance(evt.getMessage(), message.Response) and \
-                  self._status_reqs.has_key(evt.getSource().getAgentInfo()):
+                  self._status_reqs.has_key(`evt.getSource().getAgentInfo()`):
 
                 log.debug("Received a resonse from an agent we are waiting on")
-                element = self._status_reqs[evt.getSource().getAgentInfo()]
+                element = self._status_reqs[`evt.getSource().getAgentInfo()`]
                 if isinstance(evt.getMessage(), simple.StatusResponse) and \
                    evt.getMessage().getRequestKey() == element.key:
                     # This is the reply from one of the agents we are looking
@@ -153,7 +159,7 @@ class HTTPStatusResponseJob(job.Job):
                     log.info(
                        "Agent unexpectedly responded to status request with %s" 
                         % str(evt.getMessage()))
-                    del self._status_reqs[element.info]
+                    del self._status_reqs[`element.info`]
 
                 # Go through our list to see if we are stil waiting for any
                 # more status responses

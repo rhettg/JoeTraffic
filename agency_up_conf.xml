@@ -24,8 +24,8 @@
 
         <logging_path><str>log/web_reporter.log</str></logging_path>
 
-        <webaddress><str>localhost</str></webaddress>
-        <webport><int>8080</int></webport>
+        <webaddress><str>nullhole.com</str></webaddress>
+        <webport><int>3080</int></webport>
       </XMLObject>
 
     

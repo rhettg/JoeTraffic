@@ -18,6 +18,7 @@ AGENT_CONF = 2
 _file_hndl = None
 def setup_logger(filename, logname = None):
     global _file_hndl
+
     if logname is None:
         log = logging.getLogger()
     else:
@@ -90,7 +91,7 @@ if __name__ == '__main__':
                 #os.close(2)
                 #os.close(3)
 
-                log = setup_logger(a.getLoggingPath(), str(a.getAgentClass()))
+                log = setup_logger(a.getLoggingPath())
                 log.debug("Starting")
                 try:
                     my_agent = a.getAgentClass()(a)
