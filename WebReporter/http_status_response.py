@@ -15,8 +15,8 @@ class StatusTimer(timer.Timer):
 class AgentElement:
     """Container for the various information we need to get status information
     from an agent"""
-    def __init__(self, config):
-        self.config = config    # AgentConfig instance (from Step 2)
+    def __init__(self, info):
+        self.info = info        # AgentInfo instance (from Step 2)
         self.connection = None  # Connection object (from Step 4)
         self.key = None         # Request key (from Step 5)
         self.response = None    # StatusResponse (from Step 6)
@@ -27,8 +27,8 @@ class HTTPStatusResponseJob(job.Job):
        and returned to the client in the selected format
        
        So this job consists of several steps:
-           1. Request agent config objects from our Director
-           2. Receive agent config objects
+           1. Request agent info objects from our Director
+           2. Receive agent info objects
            3. Connect to each agent
            4. Complete connection to each agent 
            5. Send StatusRequests to each agent
@@ -56,14 +56,16 @@ class HTTPStatusResponseJob(job.Job):
            director isn't there, we respond with an error response"""
 
         log.debug("Running Status job")
+        # STEP 1
 
         msg = simple.StatusRequest()
         self.key = msg.getKey()
         assert self.client != None, "Connection should not be None"
         dir_conn = None
         for c in self.getAgent().getConnections():
-            if c.getConfig() is not None and \
-               c.getConfig().getName() == "Director":
+            if isinstance(c, agent.AgentConnection) and \
+                c.getAgentInfo() is not None and \
+                c.getAgentInfo().getName() == "Director":
                 dir_conn = c
                 break
 
@@ -77,7 +79,7 @@ class HTTPStatusResponseJob(job.Job):
             evt = agent.MessageSendEvent(self, msg, dir_conn)
             self.getAgent().addEvent(evt)
         else:
-            log.debug("Director config not found")
+            log.debug("Director info not found")
             err = self.get_error(204)
             resp_evt = http.HTTPResponseEvent(self, err)
             self.getAgent().addEvent(resp_evt)
@@ -86,11 +88,11 @@ class HTTPStatusResponseJob(job.Job):
 
         # STEP 4
         if isinstance(evt, simple.ConnectCompleteEvent):
-            config = evt.getSource().getConnection().getConfig()
-            if self._status_reqs.has_key(config):
+            info = evt.getSource().getConnection().getAgentInfo()
+            if self._status_reqs.has_key(info):
                 # this is one of our agent connections, send the status request
                 log.debug("Connection complete, sending StatusRequest")
-                element = self._status_reqs[config]
+                element = self._status_reqs[info]
                 element.connection = evt.getSource().getConnection()
 
                 msg = simple.StatusRequest()
@@ -112,29 +114,28 @@ class HTTPStatusResponseJob(job.Job):
                       "Received response from director, connecting to agents")
                 # We have received our list of agents, now we have to get
                 # a more detailed status from each one
-                agnts = evt.getMessage().getAgentSet().getAgents()
-                for config in agnts:
-                    if config == evt.getSource().getConfig():
+                agnts = evt.getMessage().getAgents()
+                for info in agnts:
+                    if info == evt.getSource().getAgentInfo():
                         # Don't request status from Director again
                         continue
 
                     # Create elements in status hash, send connect requests
                     # Step 3
-                    element = AgentElement(config)
-                    self._status_reqs[config] = element
+                    element = AgentElement(info)
+                    self._status_reqs[info] = element
                     
-                    connect_job = simple.ConnectJob(self.getAgent(),
-                                                    config, 3)
+                    connect_job = simple.ConnectJob(self.getAgent(), info, 3)
 
                     self.getAgent().addListener(connect_job)
                     connect_job.run()
 
             # Step 6: Response from an Agent
             elif isinstance(evt.getMessage(), message.Response) and \
-                  self._status_reqs.has_key(evt.getSource().getConfig()):
+                  self._status_reqs.has_key(evt.getSource().getAgentInfo()):
 
                 log.debug("Received a resonse from an agent we are waiting on")
-                element = self._status_reqs[evt.getSource().getConfig()]
+                element = self._status_reqs[evt.getSource().getAgentInfo()]
                 if isinstance(evt.getMessage(), simple.StatusResponse) and \
                    evt.getMessage().getRequestKey() == element.key:
                     # This is the reply from one of the agents we are looking
@@ -143,7 +144,7 @@ class HTTPStatusResponseJob(job.Job):
                            "This status has already been set: %s" % \
                             str(evt.getMessage())
                     log.info("Received status response for %s" 
-                             % element.config.getName())
+                             % element.info.getName())
 
                     element.response = evt.getMessage()
 
@@ -152,7 +153,7 @@ class HTTPStatusResponseJob(job.Job):
                     log.info(
                        "Agent unexpectedly responded to status request with %s" 
                         % str(evt.getMessage()))
-                    del self._status_reqs[element.config]
+                    del self._status_reqs[element.info]
 
                 # Go through our list to see if we are stil waiting for any
                 # more status responses
@@ -174,9 +175,9 @@ class HTTPStatusResponseJob(job.Job):
         rows = ""
         for element in self._status_reqs.values():
             dict = {}
-            dict['name'] = element.config.getName()
-            dict['address'] = element.config.getBindAddress()
-            dict['port'] = int(element.config.getPort())
+            dict['name'] = element.info.getName()
+            dict['address'] = element.info.getHost()
+            dict['port'] = int(element.info.getPort())
             if element.response is not None:
                 dict['state'] = element.response.getState().getName()
                 dict['details'] = element.response.getStatusDetails()
