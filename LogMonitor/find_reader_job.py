@@ -151,12 +151,13 @@ class FindReaderJob(job.Job):
                 else:
                     log.debug("Reader %s is free for reading a logfile" 
                                % reader.getName())
-                    req = LogReader.agent.ReadLogRequest()
-                    req.setLogPath(self._needs_reading.pop())
-                    evt = MessageSendEvent(self, req, source)
-                    self.getAgent().addEvent(evt)
-                    self._reading_files[source.getAgentInfo().getName()] = \
-                           req.getLogPath()
+                    if len(self._needs_reading) > 0:
+                        req = LogReader.agent.ReadLogRequest()
+                        req.setLogPath(self._needs_reading.pop())
+                        evt = MessageSendEvent(self, req, source)
+                        self.getAgent().addEvent(evt)
+                        self._reading_files[source.getAgentInfo().getName()] = \
+                               req.getLogPath()
 
         elif isinstance(evt, MessageReceivedEvent) and \
              isinstance(evt.getMessage(), message.Response) and \
