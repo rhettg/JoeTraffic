@@ -1,7 +1,8 @@
 import JoeAgent
-from JoeAgent import job, event, timer, simple
+from JoeAgent import job, event, timer, simple, message
 from JoeAgent.agent import MessageSendEvent, MessageReceivedEvent
 import LogReader
+import find_log_job
 
 import os, os.path
 import logging
@@ -24,19 +25,18 @@ class FindReaderJob(job.Job):
        
     def __init__(self, agent_obj):
         job.Job.__init__(self, agent_obj)
-        if not os.path.isdir(directory):
-            raise InvalidDirectoryException(directory)
 
         self._needs_reading = []  # List of files that need reading
         self._reading_files = []  # List of logs currently being read
+        self._reader_requests = {}
 
         self._dir_key = None
 
     def notify(self, evt):
-        if isinstance(evt, find_log_files.LogNeedsReadEvent):
+        if isinstance(evt, find_log_job.LogNeedsReadEvent):
             if len(self._needs_reading) == 0:
                 self.getAgent().addEvent(CheckForReadersEvent(self))
-            self._reading_files.append(evt.getLogPath())
+            self._needs_reading.append(evt.getLogPath())
         elif isinstance(evt, CheckForReadersEvent):
             log.debug("Checking for readers")
             msg = simple.StatusRequest()
@@ -44,12 +44,16 @@ class FindReaderJob(job.Job):
             assert self._dir_key == None
             self._dir_key = msg.getKey()
 
+            if len(self._needs_reading) > 0:
+                self.getAgent().addTimer(CheckForReaderTimer(self))
+
             conn = self.getAgent().getConnection("Director")
             if conn is None:
                 log.error("Connection to Director not found")
                 return
             self.getAgent().addEvent(MessageSendEvent(self, msg, conn))
         elif isinstance(evt, MessageReceivedEvent) and \
+             isinstance(evt.getMessage(), message.Response) and \
              self._dir_key == evt.getMessage().getRequestKey():
             log.debug("Recieved response from director")
             self._dir_key = None
@@ -63,12 +67,14 @@ class FindReaderJob(job.Job):
                 self._reader_requests[msg.getKey()] = r
                 self.getAgent().addEvent(MessageSendEvent(self, msg, r))
         elif isinstance(evt, MessageReceivedEvent) and \
-            self._reader_requests.has_key(evt.getRequestKey()):
-                reader = self._reader_requests[evt.getRequestKey()]
-                del self._reader_requests[evt.getRequestKey()]
+             isinstance(evt.getMessage(), message.Response) and \
+            self._reader_requests.has_key(evt.getMessage().getRequestKey()):
+                reader = self._reader_requests[evt.getMessage().getRequestKey()]
+                del self._reader_requests[evt.getMessage().getRequestKey()]
 
                 log.debug("Received status response from %s" % reader.getName())
-                if isinstance(evt.getMessage().getState(), LogReader.agent.ReadingState):
+                if isinstance(evt.getMessage().getState(), 
+                              LogReader.agent.ReadingState):
                     log.debug("Reader %s is already reading" % reader.getName())
                 else:
                     log.debug("Reader %s is free for reading a logfile" 

@@ -1,6 +1,6 @@
 import logging, string, os, os.path
 from JoeAgent import simple, event, job
-import find_log_job
+import find_log_job, find_reader_job
 
 log  = logging.getLogger("agent.LogMonitor")
 
@@ -46,7 +46,8 @@ class LogMonitorAgent(simple.SubAgent):
     def getInitJobs(self):
         self._mon_job = LogMonitorJob(self)
         return simple.SubAgent.getInitJobs(self) + \
-            [self._mon_job]
+            [self._mon_job,
+            find_reader_job.FindReaderJob(self)]
 
     def getInitEvents(self):
         return simple.SubAgent.getInitEvents(self) + \
