@@ -99,23 +99,26 @@ class FindReaderJob(job.Job):
         elif isinstance(evt, CheckForReadersEvent):
             #  Step 2 - We handle a CheckForReadersEvent
             log.debug("Checking for readers")
-            msg = simple.StatusRequest()
-
-            assert self._dir_key == None
-            self._dir_key = msg.getKey()
+            self.setNoNeedsReader()  # Clear out old timer
 
             # We may have a latent CheckForReaderTimer events even after all
             # the logs have been handled. We will just do nothing in that case
             if len(self._needs_reading) > 0:
-                self.setNeedsReader()
+                if self._dir_key is not None:
+                    log.warning("Did not receive a status response from director before timer popped")
+                    self._dir_key = None
+
+                msg = simple.StatusRequest()
+                assert self._dir_key == None
+                self._dir_key = msg.getKey()
+
+                self.setNeedsReader()    # Set a new one
 
                 conn = self.getAgent().getConnection("Director")
                 if conn is None:
                     log.error("Connection to Director not found")
                     return
                 self.getAgent().addEvent(MessageSendEvent(self, msg, conn))
-            else:
-                self.setNoNeedsReader()
 
         elif isinstance(evt, MessageReceivedEvent) and \
              isinstance(evt.getMessage(), message.Response) and \

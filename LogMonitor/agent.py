@@ -40,8 +40,8 @@ class LogMonitorConfig(simple.SubAgentConfig):
 
 class LogMonitorAgent(simple.SubAgent):
     def __init__(self, config):
-        simple.SubAgent.__init__(self, config)
         self._mon_job = None
+        simple.SubAgent.__init__(self, config)
 
     def getInitJobs(self):
         self._mon_job = LogMonitorJob(self)
@@ -56,8 +56,9 @@ class LogMonitorAgent(simple.SubAgent):
     def getStatusResponse(self, key):
         resp = simple.SubAgent.getStatusResponse(self, key)
         details = ""
-        for dir, files in self._mon_job.getCheckerProgress().iteritems():
-            details += "Monitoring %s: %s files\n" % (dir, files)
+        if self._mon_job is not None:
+            for dir, files in self._mon_job.getCheckerProgress().iteritems():
+                details += "Monitoring %s: %s files\n" % (dir, files)
 
         resp.setStatusDetails(details)  
 
