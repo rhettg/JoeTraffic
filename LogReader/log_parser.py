@@ -32,8 +32,8 @@ IP_FILTERS = []
 
 
 
-REG_WEB = re.compile("(?P<ip>[\d\.]*) - - \[(?P<timestamp>.*)\] (?P<domain>.*) \"(?P<uri>.*)\" (?P<size>[\d]*) (?P<response>.*) \"(?P<referrer>.*)\" \"(.*)\" \"(?P<ua>.*)\" \"(?P<cookie>.*)\"")
-#REG_WEB = re.compile("(?P<ip>[\d\.]*) - - \[(?P<timestamp>.*)\] \"(?P<uri>.*)\" (?P<response>[\S]*) (?P<size>[\S]*) (?P<domain>.*) \"(?P<referrer>.*)\" \"(?P<ua>.*)\" \"(?P<cookie>.*)\".*")
+#REG_WEB = re.compile("(?P<ip>[\d\.]*) - - \[(?P<timestamp>.*)\] (?P<domain>.*) \"(?P<uri>.*)\" (?P<size>[\d]*) (?P<response>.*) \"(?P<referrer>.*)\" \"(.*)\" \"(?P<ua>.*)\" \"(?P<cookie>.*)\"")
+REG_WEB = re.compile("(?P<ip>[\d\.]*) - - \[(?P<timestamp>.*)\] \"(?P<uri>.*)\" (?P<response>[\S]*) (?P<size>[\S]*) (?P<domain>.*) \"(?P<referrer>.*)\" \"(?P<ua>.*)\" \"(?P<cookie>.*)\".*")
 REG_DATE = re.compile("(?P<day>[\d]+)\/(?P<month>\S+)\/(?P<year>\d+)\:(?P<hour>\d+)\:(?P<minute>\d+)\:(?P<second>\d+) (?P<offset>[+|-]\d+)")
 
 class EndOfLogException(Exception): pass
