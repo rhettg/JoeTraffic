@@ -18,6 +18,15 @@ class ReadLogRequest(message.Request):
     def getLogPath(self):
         return self.log_path
 
+class ReadLogCompleteMessage(message.Message):
+    def __init__(self):
+        message.Message.__init__(self)
+        self.log_path = ""
+    def setLogPath(self, path):
+        self.log_path = path
+    def getLogPath(self):
+        return self.log_path
+
 MAX_READERS = 1
 class LogReaderJob(job.Job):
     """Job to spawn a job to read a log file when asked by a ReadLogMessage"""
@@ -38,6 +47,8 @@ class LogReaderJob(job.Job):
         if isinstance(evt, MessageReceivedEvent) and \
            isinstance(evt.getMessage(), ReadLogRequest):
             if self._reader is None:
+                assert not isinstance(self.getAgent().getState(), ReadingState)
+
                 log.debug("Creating job to read logfile %s" 
                           % evt.getMessage.getLogPath())
                 reading_job = read_job.ReadLogJob(self.getAgent(), 
@@ -46,7 +57,6 @@ class LogReaderJob(job.Job):
                 self.getAgent().addEvent(job.RunJobEvent(reading_job))
 
                 self._reader = reading_job
-                assert not isinstance(self.getAgent().getState(), ReadingState)
                 self.getAgent().setState(ReadingState())
 
                 msg = OkResponse()
@@ -59,8 +69,6 @@ class LogReaderJob(job.Job):
                        MessageSendEvent(self, msg, evt.getSource()))
 
         elif isinstance(evt, read_job.ReadLogCompleteEvent):
-            # Reading of log is complete, remove the file from the list
-            # and pick a new one to run if available
             log.debug("Completed reading %s, removing from active list" %
                        evt.getSource().getFilePath())
             assert isinstance(self.getAgent().getState(), ReadingState)
