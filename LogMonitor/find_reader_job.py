@@ -1,6 +1,7 @@
 import JoeAgent
 from JoeAgent import job, event, timer, simple, message
-from JoeAgent.agent import MessageSendEvent, MessageReceivedEvent
+from JoeAgent.agent import MessageSendEvent, MessageReceivedEvent, \
+                           OkResponse, DeniedResponse
 import LogReader
 import find_log_job
 
@@ -9,7 +10,7 @@ import logging
 
 log = logging.getLogger("agent.LogMonitor")
 
-FIND_READER_TIMEOUT = 10.0
+FIND_READER_TIMEOUT = 8.0
 
 class CheckForReadersEvent(event.Event): pass
 
@@ -137,6 +138,7 @@ class FindReaderJob(job.Job):
             self._reader_requests.has_key(evt.getMessage().getRequestKey()):
             #  Step 4 - Handle response from LogReader agent
                 reader = self._reader_requests[evt.getMessage().getRequestKey()]
+                source = evt.getSource()
                 del self._reader_requests[evt.getMessage().getRequestKey()]
 
                 log.debug("Received status response from %s" % reader.getName())
@@ -148,8 +150,10 @@ class FindReaderJob(job.Job):
                                % reader.getName())
                     req = LogReader.agent.ReadLogRequest()
                     req.setLogPath(self._needs_reading.pop())
-                    evt = MessageSendEvent(req, self, evt.getSource())
+                    evt = MessageSendEvent(self, req, source)
                     self.getAgent().addEvent(evt)
+                    self._reading_files[source.getAgentInfo().getName()] = \
+                           req.getLogPath()
 
         elif isinstance(evt, MessageReceivedEvent) and \
              isinstance(evt.getMessage(), message.Response) and \

@@ -1,7 +1,8 @@
 import logging, string, os, os.path
 from JoeAgent import simple, event, job, message
 import read_job
-from JoeAgent.agent import RunningState, MessageSendEvent, MessageReceivedEvent
+from JoeAgent.agent import RunningState, MessageSendEvent, \
+                           MessageReceivedEvent, OkResponse, DeniedResponse
 
 log  = logging.getLogger("agent.LogReader")
 
@@ -33,6 +34,7 @@ class LogReaderJob(job.Job):
     def __init__(self, agent_obj):
         job.Job.__init__(self, agent_obj)
         self._reader = None
+        self._monitor =  None
 
     def getReaderProgress(self):
         status_hash = {}
@@ -49,22 +51,25 @@ class LogReaderJob(job.Job):
             if self._reader is None:
                 assert not isinstance(self.getAgent().getState(), ReadingState)
 
+                self._monitor = evt.getSource()
                 log.debug("Creating job to read logfile %s" 
-                          % evt.getMessage.getLogPath())
+                          % evt.getMessage().getLogPath())
                 reading_job = read_job.ReadLogJob(self.getAgent(), 
                                                 evt.getMessage().getLogPath())
                 self.getAgent().addListener(reading_job)
-                self.getAgent().addEvent(job.RunJobEvent(reading_job))
+                self.getAgent().addEvent(job.RunJobEvent(self, reading_job))
 
                 self._reader = reading_job
                 self.getAgent().setState(ReadingState())
 
                 msg = OkResponse()
+                msg.setRequestKey(evt.getMessage().getKey())
                 self.getAgent().addEvent(
                        MessageSendEvent(self, msg, evt.getSource()))
             else:
                 # We are already reading
                 msg = DeniedResponse()
+                msg.setRequestKey(evt.getMessage().getKey())
                 self.getAgent().addEvent(
                        MessageSendEvent(self, msg, evt.getSource()))
 
@@ -77,6 +82,13 @@ class LogReaderJob(job.Job):
             self.getAgent().dropListener(self._reader)
             self._reader = None
             self.getAgent().setState(RunningState())
+
+            msg = ReadLogCompleteMessage()
+            msg.setLogPath(evt.getSource().getFilePath())
+            evt = MessageSendEvent(self, msg, self._monitor)
+            self.getAgent().addEvent(evt)
+
+            self._monitor = None
 
 class LogReaderConfig(simple.SubAgentConfig):
     def getAgentClass(self):

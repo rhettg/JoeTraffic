@@ -105,7 +105,7 @@ class FindLogJob(job.Job):
             self.getAgent().addTimer(self._timer)
         elif isinstance(evt, LogReadCompleteEvent):
             if evt.getLogPath() in self._reading:
-                log.debug("File %s marked read completed" % elem)
+                log.debug("File %s marked read completed" % evt.getLogPath())
                 self._reading.remove(evt.getLogPath())
 
     # TODO: Finish
