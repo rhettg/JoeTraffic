@@ -1,0 +1,25 @@
+JoeTraffic - Web-Log Analysis Application Utilizing the JoeAgent Framework
+March 2004
+
+This application was developed as part of a senior project by Rhett
+Garber at California Polytechnique University, San Luis
+Obispo. It is far from being a complete application, or really even
+being useful for web-log analysis. JoeTraffic is merly a proof-
+of-concept for the JoeAgent framework. I had initially invisioned
+actually making this a realy application because I had some great
+ideas that I have not seen implemented for web traffic analysis,
+however, I have a real job now.
+
+This application requires the JoeAgent library be found in the
+python search path. It also requires MySQLdb and a mysql database.
+
+This framework is being released under the GNU Lesser Public
+License. As I understand I have full rights to be able to do
+that, even though this was developed as a senior project for
+Cal Poly.
+
+For further information, please checkout the documentation
+or contact me:
+    Rhett Garber
+    rhettg@nullhole.com
+    Project Webpage: http://www.nullhole.com/JoeAgent/
