@@ -38,6 +38,13 @@
         <logging_path><str>log/logreader1.log</str></logging_path>
       </XMLObject>
 
+      <XMLObject class="LogReader.agent.LogReaderConfig">
+        <name><str>LogReader 2</str></name>
+        <bind_addr><str>localhost</str></bind_addr>
+        <port><int>3004</int></port>
+        <logging_path><str>log/logreader2.log</str></logging_path>
+      </XMLObject>
+
     </list>
   </agents>
 </XMLObject>
