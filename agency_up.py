@@ -92,7 +92,7 @@ if __name__ == '__main__':
                 #os.close(3)
 
                 log = setup_logger(a.getLoggingPath())
-                log.debug("Starting")
+                log.debug("Starting %s" % str(a.getAgentClass()))
                 try:
                     my_agent = a.getAgentClass()(a)
                     my_agent.run()
