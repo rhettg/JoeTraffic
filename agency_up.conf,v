@@ -1,0 +1,52 @@
+head	1.1;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.1
+date	2003.11.23.10.07.15;	author rhettg;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@<agency_conf>
+    <agent class="director.JoeDirector">
+      <name>Director</name>
+      <address>localhost</address>
+      <port>3000</port>
+      <logfile>log/JoeDirector.log</logfile>
+    </agent>
+
+    <agent class="raw.RawAgent"> 
+      <name>Raw Logger</name> 
+      <address>localhost</address>
+      <port>3001</port>
+      <logfile>log/Raw.log</logfile>
+    </agent>
+
+    <agent class="preprocess.PreProcessorAgent"> 
+      <name>Preprocessor</name> 
+      <address>localhost</address>
+      <port>3002</port>
+      <logfile>log/PreProcessor.log</logfile>
+    </agent>
+
+    <agent class="status_server.StatusAgent"> 
+      <name>Status Agent</name> 
+      <address>localhost</address>
+      <port>3003</port>
+      <logfile>log/status_agent.log</logfile>
+    </agent>
+</agency_conf>
+@

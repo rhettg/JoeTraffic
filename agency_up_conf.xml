@@ -1,0 +1,34 @@
+<agency_conf>
+    <agent class="director.JoeDirector">
+      <name>Director</name>
+      <address>localhost</address>
+      <port>3000</port>
+      <logfile>log/JoeDirector.log</logfile>
+    </agent>
+
+    <agent class="LogReader.agent.LogReaderAgent" 
+           config_class="LogReader.agent.LogReaderConfig">
+      <name>LogReader</name> 
+      <address>localhost</address>
+      <port>3001</port>
+      <logfile>log/LogReader.log</logfile>
+      <reader_path>/home/rhettg/JoeTraffic/weblogs;/home/rhettg/JoeTraffic/weblogs2</reader_path>
+    </agent>
+
+    <agent class="preprocess.PreProcessorAgent"> 
+      <name>Preprocessor</name> 
+      <address>localhost</address>
+      <port>3002</port>
+      <logfile>log/PreProcessor.log</logfile>
+    </agent>
+
+    <agent class="WebReporter.agent.WebReporterAgent" 
+        config_class="WebReporter.agent.WebReporterConfig">
+      <name>WebReporter</name> 
+      <address>localhost</address>
+      <port>3003</port>
+      <logfile>log/WebReporter.log</logfile>
+      <webaddress>nullhole.com</webaddress>
+      <webport>3080</webport>
+    </agent>
+</agency_conf>
