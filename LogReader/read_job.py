@@ -10,15 +10,6 @@ LINEINCR = 30
 
 log = logging.getLogger("agent.LogReader")
 
-class ReadLogEvent(event.Event):
-    """Event to indicate that we should read the file specified"""
-    def __init__(self, source, logfile):
-        event.Event.__init__(self, source)
-        self._logfile = logfile
-
-    def getLog(self):
-        return self._logfile
-
 class ReadLogCompleteEvent(event.Event):
     """Event to indicate the file is completely read. This event will
        be caught by the FindLogJob that is watching it. The file will

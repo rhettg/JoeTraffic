@@ -1,74 +1,78 @@
 import logging, string, os, os.path
-from JoeAgent import simple, event, job
-import read_job, find_log_job
+from JoeAgent import simple, event, job, message
+import read_job
+from JoeAgent.agent import RunningState, MessageSendEvent, MessageReceivedEvent
 
 log  = logging.getLogger("agent.LogReader")
 
+class ReadingState(RunningState): 
+    def getName(self):
+        return "Reading State"
+
+class ReadLogRequest(message.Request):
+    def __init__(self):
+        message.Request.__init__(self)
+        self.log_path = ""
+    def setLogPath(self, path):
+        self.log_path = path
+    def getLogPath(self):
+        return self.log_path
+
 MAX_READERS = 1
 class LogReaderJob(job.Job):
-    """Job to coordinate checking directories and reading of logs"""
+    """Job to spawn a job to read a log file when asked by a ReadLogMessage"""
     def __init__(self, agent_obj):
         job.Job.__init__(self, agent_obj)
-        self._wait_readers = []     # List of waiting log readers
-        self._active_readers = []   # List of active log readers
-        self._checkers = []  # List of active directory checkers
+        self._reader = None
 
     def getReaderProgress(self):
         status_hash = {}
-        for j in self._active_readers:
-            status_hash[j.getFilePath()] = j.getProgress()
-        for j in self._wait_readers:
-            status_hash[j.getFilePath()] = j.getProgress()
+        if self._reader is not None:
+            status_hash[self._reader.getFilePath()] = self._reader.getProgress()
         return status_hash
 
-    def getCheckerProgress(self):
-        status_hash = {}
-        for c in self._checkers:
-            status_hash[c.getDirectory()] = c.getNumFiles()
-        return status_hash
-
-    def run(self):
-        # Setup all our directory checkers
-        for dir in string.split(self.getAgent().getConfig().getPath(), ';'):
-            if os.path.isdir(dir):
-                log.info("Monitoring directory %s" % dir)
-                check_job = find_log_job.FindLogJob(self.getAgent(), dir)
-                self._checkers.append(check_job)
-                self.getAgent().addListener(check_job)
-                check_job.run()
-            else:
-                log.warning("Path %s is not valid" % dir)
     def notify(self, evt):                        
         job.Job.notify(self, evt)
 
         # This job is going to listen for ReadLogEvents and spawn ReadLogJobs
-        if isinstance(evt, read_job.ReadLogEvent):
-            log.debug("Creating job to read logfile %s" % evt.getLog())
-            reading_job = read_job.ReadLogJob(self.getAgent(), evt.getLog())
-            if len(self._active_readers) >= MAX_READERS:
-                self._wait_readers.append(reading_job)
-            else:
-                self._active_readers.append(reading_job)
+        if isinstance(evt, MessageReceivedEvent) and \
+           isinstance(evt.getMessage(), ReadLogRequest):
+            if self._reader is None:
+                log.debug("Creating job to read logfile %s" 
+                          % evt.getMessage.getLogPath())
+                reading_job = read_job.ReadLogJob(self.getAgent(), 
+                                                evt.getMessage().getLogPath())
                 self.getAgent().addListener(reading_job)
-                reading_job.run()
+                self.getAgent().addEvent(job.RunJobEvent(reading_job))
+
+                self._reader = reading_job
+                assert not isinstance(self.getAgent().getState(), ReadingState)
+                self.getAgent().setState(ReadingState())
+
+                msg = OkResponse()
+                self.getAgent().addEvent(
+                       MessageSendEvent(self, msg, evt.getSource()))
+            else:
+                # We are already reading
+                msg = DeniedResponse()
+                self.getAgent().addEvent(
+                       MessageSendEvent(self, msg, evt.getSource()))
+
         elif isinstance(evt, read_job.ReadLogCompleteEvent):
             # Reading of log is complete, remove the file from the list
             # and pick a new one to run if available
             log.debug("Completed reading %s, removing from active list" %
                        evt.getSource().getFilePath())
-            self._active_readers.remove(evt.getSource())
-            if len(self._wait_readers) > 0:
-                reader = self._wait_readers.pop()
-                self._active_readers.append(reader)
-                self.getAgent().addListener(reader)
-                reader.run()
+            assert isinstance(self.getAgent().getState(), ReadingState)
+            assert self._reader == evt.getSource()
+
+            self.getAgent().dropListener(self._reader)
+            self._reader = None
+            self.getAgent().setState(RunningState())
 
 class LogReaderConfig(simple.SubAgentConfig):
-    def __init__(self):
-        simple.SubAgentConfig.__init__(self)
-        self.reader_path = ""
-    def getPath(self):
-        return self.reader_path
+    def getAgentClass(self):
+        return LogReaderAgent
 
 class LogReaderAgent(simple.SubAgent):
     def __init__(self, config):
@@ -80,18 +84,11 @@ class LogReaderAgent(simple.SubAgent):
         return simple.SubAgent.getInitJobs(self) + \
             [self._reader]
 
-    def getInitEvents(self):
-        return simple.SubAgent.getInitEvents(self) + \
-               [job.RunJobEvent(self, self._reader)]
-
     def getStatusResponse(self, key):
         resp = simple.SubAgent.getStatusResponse(self, key)
         details = ""
         for logfile, progress in self._reader.getReaderProgress().iteritems():
             details += "Reading %s: %s%%\n" % (logfile, progress)
-        for dir, files in self._reader.getCheckerProgress().iteritems():
-            details += "Monitoring %s: %s files\n" % (dir, files)
 
         resp.setStatusDetails(details)  
-
         return resp
